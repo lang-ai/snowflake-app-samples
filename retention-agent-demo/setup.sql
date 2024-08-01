@@ -1,23 +1,23 @@
 -- Create the database
-DROP DATABASE IF EXISTS "LANG_AI_DEMO";
-CREATE DATABASE "LANG_AI_DEMO";
+DROP DATABASE IF EXISTS lang_ai_demo;
+CREATE DATABASE lang_ai_demo;
 
 -- Create the tables
-CREATE TABLE IF NOT EXISTS "LANG_AI_DEMO".PUBLIC."nike_lapsed_customers" (
+CREATE TABLE IF NOT EXISTS lang_ai_demo.public.nike_lapsed_customers (
     ID STRING,
     Lapsed_Customer_Reason STRING,
     Date DATE,
     User_ID STRING
 );
 
-CREATE TABLE IF NOT EXISTS "LANG_AI_DEMO".PUBLIC."nike_users" (
+CREATE TABLE IF NOT EXISTS lang_ai_demo.public.nike_users (
     ID STRING,
     Email STRING,
     Customer_Spend STRING
 );
 
 -- Insert data into nike_lapsed_customers
-INSERT INTO "LANG_AI_DEMO".PUBLIC."nike_lapsed_customers" VALUES
+INSERT INTO lang_ai_demo.public.nike_lapsed_customers VALUES
 ('c783f64f44d04a8a', 'I feel like Nike''s style doesn''t match my personal taste anymore. Too flashy for me.', '2024-07-19', '841b84636879477d'),
 ('cb75ec93026046cb', 'Can never find the right size in Nike shoes. Always too narrow for my feet.', '2024-07-17', '841b84636879477d'),
 ('e80e4ef0aa3b4d12', 'The stitching on the last pair of Nike shorts I bought came undone after just a few washes.', '2024-07-29', '841b84636879477d'),
@@ -1093,7 +1093,7 @@ INSERT INTO "LANG_AI_DEMO".PUBLIC."nike_lapsed_customers" VALUES
 ('981dbd08eba94951', 'I''ve started a job that requires me to wear safety shoes not offered by Nike.', '2024-07-05', '20c704300beb4bde');
 
 -- Insert data into nike_users
-INSERT INTO "LANG_AI_DEMO".public."nike_users" VALUES
+INSERT INTO lang_ai_demo.public.nike_users VALUES
 ('d118217e8b074a40', 'user2@example.com', 'Premium >$1k/month'),
 ('ab9dfbce2f754944', 'user3@example.com', 'Small $50-$300/month'),
 ('65cc9c6fee664a7c', 'user4@example.com', 'High >$300/month'),
@@ -2065,5 +2065,5 @@ INSERT INTO "LANG_AI_DEMO".public."nike_users" VALUES
 -- Create the view
 CREATE VIEW NIKE_LAPSED_CUSTOMERS_VIEW AS
 SELECT m.ID, m.LAPSED_CUSTOMER_REASON as TEXT, m.DATE as CREATION_DATE, m.USER_ID as USER_ID, u.CUSTOMER_SPEND as CUSTOMER_SPEND
-FROM "LANG_AI_DEMO".PUBLIC."nike_lapsed_customers" m
-JOIN "LANG_AI_DEMO".PUBLIC."nike_users" u WHERE u.ID = m.USER_ID;
+FROM lang_ai_demo.public.nike_lapsed_customers m
+JOIN lang_ai_demo.public.nike_users u WHERE u.ID = m.USER_ID;
