@@ -14,7 +14,6 @@ USE WAREHOUSE IDENTIFIER($USER_WAREHOUSE);
 --------------------------------------------------
 -- Grant necessary privileges to the LangAI app --
 --------------------------------------------------
-
 -- Grant BIND SERVICE ENDPOINT privilege to the LangAI application to enable
 -- network ingress and access to the LangAI UI.
 -- Details of the privilege can be found here
@@ -37,7 +36,6 @@ USE DATABASE IDENTIFIER($LANGAI_APP_DB);
 CREATE SCHEMA IF NOT EXISTS CONFIGURATION;
 GRANT USAGE ON SCHEMA CONFIGURATION TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 USE SCHEMA CONFIGURATION;
-
 
 
 -----------------------------------------
@@ -67,11 +65,11 @@ GRANT USAGE ON INTEGRATION SLACK_EXTERNAL_ACCESS_INTEGRATION TO APPLICATION IDEN
 GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 
 
-
 ------------------------------
 -- Grant access to the view --
 ------------------------------
--- This steps requires a view to be created. You may complete this step after installing and launching the application. Learn more here: https://help.lang.ai/en/articles/9914672-creating-an-sql-view-for-your-ai-agent
+-- These steps require a view to be created. You may complete this step after installing and launching the application.
+-- Learn more here: https://help.lang.ai/en/articles/9914672-creating-an-sql-view-for-your-ai-agent
 GRANT USAGE ON DATABASE "YOUR_DATABASE" TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 GRANT USAGE ON SCHEMA "YOUR_SCHEMA" TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 GRANT SELECT ON VIEW "YOUR_VIEW" TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
@@ -93,7 +91,6 @@ CREATE WAREHOUSE IF NOT EXISTS LANGAI_APP_WAREHOUSE
 
 -- Grant usage of the warehouse to the app
 GRANT USAGE ON WAREHOUSE LANGAI_APP_WAREHOUSE TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
-
 
 -- Create a compute pool for the app service
 CREATE COMPUTE POOL IF NOT EXISTS LANGAI_APP_COMPUTE_POOL
@@ -126,9 +123,12 @@ SET START_APP_PROCEDURE = CONCAT($LANGAI_APP_NAME, '.APP_PUBLIC.MANUAL_START_APP
 CALL IDENTIFIER($START_APP_PROCEDURE)();
 
 
--- Optional: Enable event sharing
--- Allows LangAI to receive system logs to help diagnose application problems
+---------------------------
+-- Enable event sharing  --
+---------------------------
+-- Optional: Allows LangAI to receive system logs to help diagnose application issues
 ALTER APPLICATION IDENTIFIER($LANGAI_APP_NAME) SET AUTHORIZE_TELEMETRY_EVENT_SHARING=true;
+
 
 -- Optional: Create a specific role for app access
 -- This step allows for more granular control over who can use the app
@@ -139,33 +139,3 @@ SET LANGAI_APP_USER = CONCAT($LANGAI_APP_NAME, '.APP_USER');
 GRANT APPLICATION ROLE IDENTIFIER($LANGAI_APP_USER) TO ROLE LANGAI_APP_USER_ROLE;
 -- Assign the new role to a ROLE or USER
 GRANT ROLE LANGAI_APP_USER_ROLE TO USER|ROLE <YOUR_USER|YOUR_ROLE>;
-
-
-
-
---------------------
--- Remove the app --
---------------------
-
-USE ROLE ACCOUNTADMIN;
-
-SET USER_WAREHOUSE = '<YOUR_WAREHOUSE>';
-USE WAREHOUSE IDENTIFIER($USER_WAREHOUSE);
-
--- Set the name of the LangAI application
--- IMPORTANT: This should be the default name of the application as it is installed
-SET LANGAI_APP_NAME = 'LANGAI_APP';
-SET LANGAI_APP_DB = CONCAT($LANGAI_APP_NAME, '_APP_DATA');
-
--- Delete the LangAi application and all associated objects.
-DROP APPLICATION IF EXISTS IDENTIFIER($LANGAI_APP_NAME) CASCADE;
-DROP WAREHOUSE IF EXISTS LANGAI_APP_WAREHOUSE;
-DROP COMPUTE POOL IF EXISTS LANGAI_APP_COMPUTE_POOL;
-DROP COMPUTE POOL IF EXISTS LANGAI_APP_INSIGHTS_COMPUTE_POOL;
-DROP DATABASE IF EXISTS IDENTIFIER($LANGAI_APP_DB);
-
--- Drop the external access rule created for the LangAI app.
-DROP EXTERNAL ACCESS INTEGRATION IF EXISTS SLACK_EXTERNAL_ACCESS_INTEGRATION;
-
--- Drop the role created for the user of LangAI app.
-DROP ROLE IF EXISTS LANGAI_APP_USER_ROLE;
