@@ -71,7 +71,7 @@ GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO APPLICATION IDENTIFIER($LANGA
 ------------------------------
 -- Grant access to the view --
 ------------------------------
--- Grant read access to the table containing the data
+-- This steps requires a view to be created. You may complete this step after installing and launching the application. Learn more here: https://help.lang.ai/en/articles/9914672-creating-an-sql-view-for-your-ai-agent
 GRANT USAGE ON DATABASE "YOUR_DATABASE" TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 GRANT USAGE ON SCHEMA "YOUR_SCHEMA" TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 GRANT SELECT ON VIEW "YOUR_VIEW" TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
