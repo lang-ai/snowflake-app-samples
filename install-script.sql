@@ -1,4 +1,4 @@
--- Set the warehouse to be used to run the setup scripts
+-- Set the warehouse to be used for the App setup
 SET USER_WAREHOUSE = '<YOUR_WAREHOUSE>';
 
 -- Set the name of the LangAI application
@@ -9,6 +9,7 @@ SET LANGAI_APP_NAME = 'LANGAI_APP';
 -- https://other-docs.snowflake.com/en/native-apps/consumer-installing#set-up-required-privileges
 USE ROLE ACCOUNTADMIN;
 USE WAREHOUSE IDENTIFIER($USER_WAREHOUSE);
+
 
 --------------------------------------------------
 -- Grant necessary privileges to the LangAI app --
@@ -22,6 +23,7 @@ GRANT BIND SERVICE ENDPOINT ON ACCOUNT TO APPLICATION IDENTIFIER($LANGAI_APP_NAM
 -- Grant EXECUTE TASK privilege to enable automatic generation of insights
 GRANT EXECUTE TASK ON ACCOUNT TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 
+
 ------------------------------------------------------
 -- Create database and schema to save configuration --
 ------------------------------------------------------
@@ -29,17 +31,16 @@ GRANT EXECUTE TASK ON ACCOUNT TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 -- with usage for the LangAI application.
 SET LANGAI_APP_DB = CONCAT($LANGAI_APP_NAME, '_APP_DATA');
 CREATE DATABASE IF NOT EXISTS IDENTIFIER($LANGAI_APP_DB);
+GRANT USAGE ON DATABASE IDENTIFIER($LANGAI_APP_DB) TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 USE DATABASE IDENTIFIER($LANGAI_APP_DB);
 CREATE SCHEMA IF NOT EXISTS CONFIGURATION;
+GRANT USAGE ON SCHEMA CONFIGURATION TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 USE SCHEMA CONFIGURATION;
+
 
 -----------------------------------------
 -- Create external access integrations --
 -----------------------------------------
--- These integrations are necessary to allow the App to make requests to resources outside of Snowflake
--- They enable secure connections to external services and APIs required for the App's functionality
--- https://docs.snowflake.com/en/developer-guide/external-network-access/external-network-access-overview
-
 -- Set up network rule to allow access to Slack
 CREATE OR REPLACE NETWORK RULE SLACK_EXTERNAL_ACCESS_NETWORK_RULE
     MODE = EGRESS
@@ -51,65 +52,28 @@ CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION SLACK_EXTERNAL_ACCESS_INTEGRATION
     ALLOWED_NETWORK_RULES = (SLACK_EXTERNAL_ACCESS_NETWORK_RULE)
     ENABLED = true;
 
+-- Grant USAGE privilege on the external access integration to the app
+GRANT USAGE ON INTEGRATION SLACK_EXTERNAL_ACCESS_INTEGRATION TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
+
+
 -------------------
 -- CONFIGURE LLM --
 -------------------
--- OpenAI configuration is required for app functionality, even if not used.
--- Llama configuration is optional and only needed if you want to use it.
--- If both are configured, OpenAI will be used preferentially by the app.
-
--- OpenAI Configuration (Required)
-SET OPENAI_TOKEN = '<YOUR_OPENAI_TOKEN>'; -- Leave empty if not using OpenAI
-SET OPENAI_URL = 'api.openai.com'; -- Use 'not-used' if not using OpenAI
-
--- Create a secret for OpenAI API calls
-CREATE OR REPLACE SECRET OPENAI_TOKEN
-    TYPE = GENERIC_STRING
-    SECRET_STRING = $OPENAI_TOKEN;
-
--- Set up network rule to allow access to OpenAI API
-CREATE OR REPLACE NETWORK RULE OPENAI_EXTERNAL_ACCESS_NETWORK_RULE
-    MODE = EGRESS
-    TYPE = HOST_PORT
-    VALUE_LIST = ($OPENAI_URL);
-
--- Create external access integration for OpenAI
-CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION OPENAI_EXTERNAL_ACCESS_INTEGRATION
-    ALLOWED_NETWORK_RULES = (OPENAI_EXTERNAL_ACCESS_NETWORK_RULE)
-    ALLOWED_AUTHENTICATION_SECRETS=(OPENAI_TOKEN)
-    ENABLED = true;
-
--- Llama Configuration (Optional)
+-- Llama Configuration
 -- Necessary for the app to access to snowflake cortex
 -- https://medium.com/snowflake/unlocking-the-power-of-snowflake-native-app-and-cortex-llm-building-applications-with-ease-61ef0d3b5296
 GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 
------------------------------------
--- Create application references --
------------------------------------
--- These references are necessary to allow the Snowflake Native App to access existing objects in the consumer account
--- They enable the app to interact with specific tables, views, or other objects that exist outside the APPLICATION object
--- References provide a secure way for the app to access consumer data without knowing the exact schema and object names
--- https://docs.snowflake.com/en/developer-guide/native-apps/requesting-refs
 
--- Set reference to OpenAI token
-SET OPENAI_TOKEN_REFERENCE = (SELECT SYSTEM$REFERENCE('SECRET', CONCAT($LANGAI_APP_DB, '.CONFIGURATION.OPENAI_TOKEN'), 'PERSISTENT', 'READ', 'USAGE'));
-CALL LANGAI_APP.CONFIG.REGISTER_SINGLE_REFERENCE('OPENAI_TOKEN', 'ADD', $OPENAI_TOKEN_REFERENCE);
+------------------------------
+-- Grant access to the view --
+------------------------------
+-- These steps require a view to be created. You may complete this step after installing and launching the application.
+-- Learn more here: https://help.lang.ai/en/articles/9914672-creating-an-sql-view-for-your-ai-agent
+GRANT USAGE ON DATABASE "YOUR_DATABASE" TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
+GRANT USAGE ON SCHEMA "YOUR_SCHEMA" TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
+GRANT SELECT ON VIEW "YOUR_VIEW" TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 
--- Set reference to OpenAI external access integration
-SET OPENAI_EXTERNAL_ACCESS_REFERENCE = (SELECT SYSTEM$REFERENCE('EXTERNAL_ACCESS_INTEGRATION', 'OPENAI_EXTERNAL_ACCESS_INTEGRATION', 'PERSISTENT', 'USAGE'));
-CALL LANGAI_APP.CONFIG.REGISTER_SINGLE_REFERENCE('OPENAI_EXTERNAL_ACCESS', 'ADD', $OPENAI_EXTERNAL_ACCESS_REFERENCE);
-
--- Set reference to Slack external access integration
-SET SLACK_EXTERNAL_ACCESS_REFERENCE = (SELECT SYSTEM$REFERENCE('EXTERNAL_ACCESS_INTEGRATION', 'SLACK_EXTERNAL_ACCESS_INTEGRATION', 'PERSISTENT', 'USAGE'));
-CALL LANGAI_APP.CONFIG.REGISTER_SINGLE_REFERENCE('SLACK_EXTERNAL_ACCESS', 'ADD', $SLACK_EXTERNAL_ACCESS_REFERENCE);
-
--- Set reference to the view containing user interactions
--- It allows the app to access and read user interactions for insight generation
--- IMPORTANT: USE FULLY QUALIFIED NAME
-SET VIEW_NAME = '<YOUR_DB.YOUR_SCHEMA.YOUR_VIEW>';
-SET VIEW_REFERENCE = (SELECT SYSTEM$REFERENCE('VIEW', $VIEW_NAME, 'PERSISTENT', 'SELECT'));
-CALL LANGAI_APP.CONFIG.REGISTER_SINGLE_REFERENCE('UNSTRUCTURED_DATA_VIEW', 'ADD', $VIEW_REFERENCE);
 
 ------------------------
 -- Installing the app --
@@ -134,17 +98,39 @@ CREATE COMPUTE POOL IF NOT EXISTS LANGAI_APP_COMPUTE_POOL
     MIN_NODES = 1
     MAX_NODES = 1
     AUTO_SUSPEND_SECS = 60
-    INSTANCE_FAMILY = HIGHMEM_X64_S
+    INSTANCE_FAMILY = CPU_X64_XS
     AUTO_RESUME = true;
 
 -- Grant usage of the compute pool to the app
 GRANT USAGE ON COMPUTE POOL LANGAI_APP_COMPUTE_POOL TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
 
+-- Create a compute pool for calculating insights
+CREATE COMPUTE POOL IF NOT EXISTS LANGAI_APP_INSIGHTS_COMPUTE_POOL
+    FOR APPLICATION IDENTIFIER($LANGAI_APP_NAME)
+    MIN_NODES = 1
+    MAX_NODES = 1
+    AUTO_SUSPEND_SECS = 60
+    INSTANCE_FAMILY = HIGHMEM_X64_S
+    AUTO_RESUME = true
+    INITIALLY_SUSPENDED = true;
+
+-- Grant usage of the compute pool to the app
+GRANT USAGE ON COMPUTE POOL LANGAI_APP_INSIGHTS_COMPUTE_POOL TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
+
 -- Initiate the app installation process
 -- Note: This operation may take several minutes to complete
-CALL LANGAI_APP.APP_PUBLIC.MANUAL_START_APP();
+SET START_APP_PROCEDURE = CONCAT($LANGAI_APP_NAME, '.APP_PUBLIC.MANUAL_START_APP');
+CALL IDENTIFIER($START_APP_PROCEDURE)();
 
--- OPTIONAL: Create a specific role for app access
+
+---------------------------
+-- Enable event sharing  --
+---------------------------
+-- Optional: Allows LangAI to receive system logs to help diagnose application issues
+ALTER APPLICATION IDENTIFIER($LANGAI_APP_NAME) SET AUTHORIZE_TELEMETRY_EVENT_SHARING=true;
+
+
+-- Optional: Create a specific role for app access
 -- This step allows for more granular control over who can use the app
 -- Create a new role for LangAI app users if it doesn't already exist
 CREATE ROLE IF NOT EXISTS LANGAI_APP_USER_ROLE;
@@ -153,5 +139,3 @@ SET LANGAI_APP_USER = CONCAT($LANGAI_APP_NAME, '.APP_USER');
 GRANT APPLICATION ROLE IDENTIFIER($LANGAI_APP_USER) TO ROLE LANGAI_APP_USER_ROLE;
 -- Assign the new role to a ROLE or USER
 GRANT ROLE LANGAI_APP_USER_ROLE TO USER|ROLE <YOUR_USER|YOUR_ROLE>;
-
-
