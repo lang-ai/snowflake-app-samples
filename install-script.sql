@@ -41,6 +41,10 @@ USE SCHEMA CONFIGURATION;
 -----------------------------------------
 -- Create external access integrations --
 -----------------------------------------
+-- These integrations are necessary to allow the App to make requests to resources outside of Snowflake
+-- They enable secure connections to external services and APIs required for the App's functionality
+-- https://docs.snowflake.com/en/developer-guide/external-network-access/external-network-access-overview
+
 -- Set up network rule to allow access to Slack
 CREATE OR REPLACE NETWORK RULE SLACK_EXTERNAL_ACCESS_NETWORK_RULE
     MODE = EGRESS
