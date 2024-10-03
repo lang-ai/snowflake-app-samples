@@ -39,7 +39,7 @@ USE SCHEMA CONFIGURATION;
 
 
 -----------------------------------------
--- Create external access integrations --
+-- OPTIONAL: Configure Slack Integration --
 -----------------------------------------
 -- These integrations are necessary to allow the App to make requests to resources outside of Snowflake
 -- They enable secure connections to external services and APIs required for the App's functionality
@@ -50,6 +50,7 @@ CREATE OR REPLACE NETWORK RULE SLACK_EXTERNAL_ACCESS_NETWORK_RULE
     MODE = EGRESS
     TYPE = HOST_PORT
     VALUE_LIST = ('slack.com');
+
 -- Create external access integration for Slack
 -- This enables the app to send insights via Slack
 CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION SLACK_EXTERNAL_ACCESS_INTEGRATION
@@ -58,6 +59,10 @@ CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION SLACK_EXTERNAL_ACCESS_INTEGRATION
 
 -- Grant USAGE privilege on the external access integration to the app
 GRANT USAGE ON INTEGRATION SLACK_EXTERNAL_ACCESS_INTEGRATION TO APPLICATION IDENTIFIER($LANGAI_APP_NAME);
+
+-- Activate the Slack external access integration
+SET ACTIVATE_SLACK_PROCEDURE = CONCAT($LANGAI_APP_NAME, '.CONFIG.ACTIVATE_SLACK_EXTERNAL_ACCESS');
+CALL IDENTIFIER($ACTIVATE_SLACK_PROCEDURE)();
 
 
 -------------------
