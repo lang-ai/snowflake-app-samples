@@ -2283,9 +2283,3 @@ INSERT INTO lang_ai_demo.public.zoom_users VALUES
 ('1fcc2ec8ca764df2', 'user1129@example.com', 'Business'),
 ('8cf10781c7f84c57', 'user1130@example.com', 'Pro'),
 ('a610986b7864415c', 'user1131@example.com', 'Business');
-
--- Create the view
-CREATE VIEW lang_ai_demo.public.zoom_cancellations_view AS
-SELECT m.ID, m.CANCELLATION_REASON as TEXT, m.DATE as CREATION_DATE, m.USER_ID as USER_ID, u.PLAN_TYPE as PLAN_TYPE
-FROM lang_ai_demo.public.zoom_cancellations m
-JOIN lang_ai_demo.public.zoom_users u WHERE u.ID = m.USER_ID;
